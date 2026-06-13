@@ -1,0 +1,123 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+st.set_page_config(
+    page_title="⚽ 월드컵 순위 예측기",
+    page_icon="🏆",
+    layout="wide"
+)
+
+st.title("🏆 월드컵 순위 예측기")
+st.markdown("각 팀의 승률을 입력하면 시뮬레이션을 통해 예상 순위를 계산합니다.")
+
+teams = st.multiselect(
+    "참가 팀 선택",
+    [
+        "대한민국",
+        "브라질",
+        "아르헨티나",
+        "프랑스",
+        "독일",
+        "잉글랜드",
+        "스페인",
+        "일본"
+    ],
+    default=["대한민국", "브라질", "아르헨티나", "프랑스"]
+)
+
+if len(teams) < 2:
+    st.warning("최소 2개 팀을 선택하세요.")
+    st.stop()
+
+st.subheader("⚽ 팀별 승리 확률")
+
+win_rates = {}
+
+for team in teams:
+    win_rates[team] = st.slider(
+        f"{team}",
+        0,
+        100,
+        50
+    )
+
+simulations = st.slider(
+    "🎲 시뮬레이션 횟수",
+    100,
+    10000,
+    1000,
+    100
+)
+
+if st.button("🚀 순위 예측 시작"):
+
+    champion_count = {team: 0 for team in teams}
+
+    for _ in range(simulations):
+
+        scores = {}
+
+        for team in teams:
+
+            strength = win_rates[team]
+
+            random_bonus = np.random.normal(0, 15)
+
+            score = strength + random_bonus
+
+            scores[team] = score
+
+        ranking = sorted(
+            scores.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+
+        champion_count[ranking[0][0]] += 1
+
+    result_df = pd.DataFrame({
+        "팀": champion_count.keys(),
+        "우승확률(%)": [
+            round(v / simulations * 100, 2)
+            for v in champion_count.values()
+        ]
+    })
+
+    result_df = result_df.sort_values(
+        "우승확률(%)",
+        ascending=False
+    )
+
+    st.balloons()
+
+    st.success("🏆 시뮬레이션 완료!")
+
+    st.subheader("예상 우승 확률")
+
+    st.dataframe(
+        result_df,
+        use_container_width=True
+    )
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    ax.bar(
+        result_df["팀"],
+        result_df["우승확률(%)"]
+    )
+
+    ax.set_ylabel("우승확률 (%)")
+    ax.set_title("🏆 예상 우승 확률")
+
+    plt.xticks(rotation=30)
+
+    st.pyplot(fig)
+
+    st.subheader("🥇 최종 예측 순위")
+
+    for idx, row in result_df.iterrows():
+        st.write(
+            f"{result_df.index.get_loc(idx)+1}위 - {row['팀']} ({row['우승확률(%)']}%)"
+        )
